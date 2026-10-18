@@ -19,6 +19,7 @@ export const LINK_TYPES: LinkTypeConfig[] = [
   { id: 'example', label: 'Example', color: '#f59e0b' },
   { id: 'causes', label: 'Causes', color: '#a855f7' },
   { id: 'question', label: 'Question', color: '#eab308' },
+  { id: 'inspires', label: 'Inspires', color: '#ec4899' },
 ]
 
 const FALLBACK_COLOR = '#9ca3af'
