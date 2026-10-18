@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# SQLite index — rebuilt from the vault files on server startup
+server/*.db
+server/*.db-journal
+server/*.db-wal
+server/*.db-shm
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

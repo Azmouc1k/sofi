@@ -14,12 +14,5 @@ body {
 }
 
 .cm-wikilink {
-  color: #aa3bff;
   text-decoration: underline dotted;
-}
-
-@media (prefers-color-scheme: dark) {
-  .cm-wikilink {
-    color: #c084fc;
-  }
 }

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BacklinksPanel } from '../features/links/BacklinksPanel'
 import { NoteEditor } from '../features/notes/NoteEditor'
 import { NoteList } from '../features/notes/NoteList'
 import { extractHeadingTitle } from '../features/notes/parseTitle'
 import * as storage from '../storage/api'
+import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
 
 const SAVE_DELAY_MS = 500
@@ -32,6 +34,7 @@ export default function App() {
   // the editor mid-edit and lose cursor position — only genuinely opening a
   // different note changes this.
   const [editorKey, setEditorKey] = useState<string | null>(null)
+  const [backlinks, setBacklinks] = useState<Backlink[]>([])
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,6 +55,32 @@ export default function App() {
   useEffect(() => {
     refreshList()
   }, [refreshList])
+
+  // Re-fetches whenever the open note's id changes — including a
+  // heading-driven self-rename, which can change which other notes'
+  // links resolve to it.
+  useEffect(() => {
+    if (!activeNote) {
+      setBacklinks([])
+      return
+    }
+    let cancelled = false
+    storage
+      .getBacklinks(activeNote.id)
+      .then((result) => {
+        if (!cancelled) setBacklinks(result)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(describeError(err, 'Failed to load backlinks'))
+      })
+    return () => {
+      cancelled = true
+    }
+    // Deliberately depends on the id alone, not the whole object — content
+    // edits change `activeNote` on every keystroke and would otherwise
+    // refetch backlinks constantly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNote?.id])
 
   // Saves the currently active note immediately, bypassing the debounce.
   // Called before switching notes so the last edits are never lost.
@@ -252,6 +281,11 @@ export default function App() {
           </div>
         )}
       </main>
+      {activeNote && (
+        <aside className="w-64 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
+          <BacklinksPanel backlinks={backlinks} onOpenNote={openNote} />
+        </aside>
+      )}
     </div>
   )
 }

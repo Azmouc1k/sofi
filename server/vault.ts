@@ -11,7 +11,7 @@ export interface Note extends NoteSummary {
   content: string
 }
 
-const EXT = '.md'
+export const EXT = '.md'
 
 // Note ids are filenames without the extension. Reject anything that could
 // escape the vault directory (path separators, `..`, etc).
@@ -29,7 +29,7 @@ function idToFilePath(vaultDir: string, id: string): string {
 // The note's title is its first-line "# Heading" — editing the heading is
 // how you rename a note (like Obsidian). The filename follows the heading,
 // kept in sync on save. Notes without a heading fall back to the filename.
-function parseHeadingTitle(content: string): string | null {
+export function parseHeadingTitle(content: string): string | null {
   const firstLine = content.split('\n', 1)[0]?.trim()
   if (firstLine?.startsWith('# ')) {
     const title = firstLine.slice(2).trim()

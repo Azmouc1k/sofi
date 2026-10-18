@@ -9,11 +9,15 @@ import {
 } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { useEffect, useRef } from 'react'
+import { getLinkTypeConfig } from '../../lib/linkTypes'
 import { parseLinks } from '../links/parseLinks'
 
 function buildLinkDecorations(view: EditorView): DecorationSet {
   const ranges = parseLinks(view.state.doc.toString()).map((link) =>
-    Decoration.mark({ class: 'cm-wikilink' }).range(link.start, link.end),
+    Decoration.mark({
+      class: 'cm-wikilink',
+      attributes: { style: `color: ${getLinkTypeConfig(link.type).color};` },
+    }).range(link.start, link.end),
   )
   return Decoration.set(ranges)
 }

@@ -1,3 +1,4 @@
+import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
 
 // Single interface the UI calls to read/write notes. Backed by the local
@@ -36,6 +37,11 @@ export async function saveNote(id: string, content: string): Promise<NoteSummary
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   })
+  return parseJsonOrThrow(res)
+}
+
+export async function getBacklinks(id: string): Promise<Backlink[]> {
+  const res = await fetch(`/api/notes/${encodeURIComponent(id)}/backlinks`)
   return parseJsonOrThrow(res)
 }
 
