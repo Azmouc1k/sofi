@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+#root {
+  height: 100vh;
+}
+
+.cm-wikilink {
+  color: #aa3bff;
+  text-decoration: underline dotted;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cm-wikilink {
+    color: #c084fc;
+  }
+}
