@@ -103,7 +103,7 @@ Only work on the current phase unless told otherwise.
     links, with suggested placement.
 13. **Desktop app** — package with Tauri.
 
-Current phase: **1**
+Current phase: **2**
 
 ## Folder structure (target)
 
@@ -147,3 +147,13 @@ vault/          sample notes for development (not user data)
 
 - Phase 1: chose Tailwind for styling over CSS modules — already wired up,
   keeps styling colocated with components, less to maintain.
+- Phase 1: note titles are heading-driven (the first-line "# Heading"),
+  not a separate filename-only rename — matches Obsidian, chosen after a
+  user mismatch where editing the heading didn't update the sidebar.
+- Phase 2: SQLite via Node's built-in `node:sqlite` instead of
+  better-sqlite3 — avoids a native-compiled dependency; Node 24 already
+  has it. WAL mode + a busy timeout avoid "database is locked" when
+  tsx watch restarts the dev server.
+- Phase 2: the `tags` table from the data model isn't created yet — no
+  phase needs it until the graph's tag filter (Phase 3) or later, so it's
+  deferred rather than built unused.
