@@ -85,6 +85,8 @@ export function NoteEditor({ value, onChange, onOpenLink }: NoteEditorProps) {
       parent: containerRef.current,
     })
     viewRef.current = view
+    view.dispatch({ selection: { anchor: view.state.doc.length } })
+    view.focus()
 
     return () => {
       view.destroy()

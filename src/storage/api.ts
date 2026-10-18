@@ -39,15 +39,6 @@ export async function saveNote(id: string, content: string): Promise<NoteSummary
   return parseJsonOrThrow(res)
 }
 
-export async function renameNote(id: string, title: string): Promise<Note> {
-  const res = await fetch(`/api/notes/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
-  })
-  return parseJsonOrThrow(res)
-}
-
 export async function deleteNote(id: string): Promise<void> {
   const res = await fetch(`/api/notes/${encodeURIComponent(id)}`, { method: 'DELETE' })
   if (!res.ok) {

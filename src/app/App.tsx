@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NoteEditor } from '../features/notes/NoteEditor'
 import { NoteList } from '../features/notes/NoteList'
+import { extractHeadingTitle } from '../features/notes/parseTitle'
 import * as storage from '../storage/api'
 import type { Note, NoteSummary } from '../types/note'
 
@@ -12,12 +13,25 @@ function describeError(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
 
+// Create/rename silently fall back to "Title 2" etc. when the requested
+// name is already taken; surface that so it's never a silent surprise.
+function noticeForCollision(requested: string, actualId: string, verb: 'Created' | 'Renamed'): string | null {
+  if (actualId === requested) return null
+  return `${verb} as "${actualId}" — a note named "${requested}" already exists.`
+}
+
 export default function App() {
   const [notes, setNotes] = useState<NoteSummary[]>([])
   const [activeNote, setActiveNote] = useState<Note | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [pendingLinkTitle, setPendingLinkTitle] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  // Identifies the mounted NoteEditor instance. Separate from activeNote.id
+  // so a heading-driven rename (which changes activeNote.id) doesn't remount
+  // the editor mid-edit and lose cursor position — only genuinely opening a
+  // different note changes this.
+  const [editorKey, setEditorKey] = useState<string | null>(null)
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -51,9 +65,17 @@ export default function App() {
     dirtyRef.current = false
     setSaveStatus('saving')
     try {
-      await storage.saveNote(note.id, note.content)
+      const saved = await storage.saveNote(note.id, note.content)
       await refreshList()
       setSaveStatus('saved')
+      if (saved.id !== note.id) {
+        // The heading changed, so the server renamed the file to match.
+        setActiveNote((prev) =>
+          prev && prev.id === note.id ? { ...prev, id: saved.id, title: saved.title } : prev,
+        )
+        const heading = extractHeadingTitle(note.content)
+        setNotice(heading ? noticeForCollision(heading, saved.id, 'Renamed') : null)
+      }
     } catch (err) {
       dirtyRef.current = true
       setSaveStatus('unsaved')
@@ -65,8 +87,11 @@ export default function App() {
     async (id: string) => {
       await flushSave()
       try {
-        setActiveNote(await storage.readNote(id))
+        const note = await storage.readNote(id)
+        setActiveNote(note)
+        setEditorKey(note.id)
         setSaveStatus('idle')
+        setNotice(null)
       } catch (err) {
         setError(describeError(err, 'Failed to open note'))
       }
@@ -95,7 +120,9 @@ export default function App() {
       const created = await storage.createNote(title)
       await refreshList()
       setActiveNote(created)
+      setEditorKey(created.id)
       setSaveStatus('idle')
+      setNotice(noticeForCollision(title, created.id, 'Created'))
     } catch (err) {
       setError(describeError(err, 'Failed to create note'))
     }
@@ -108,25 +135,14 @@ export default function App() {
         const created = await storage.createNote(title)
         await refreshList()
         setActiveNote(created)
+        setEditorKey(created.id)
         setSaveStatus('idle')
+        setNotice(noticeForCollision(title, created.id, 'Created'))
       } catch (err) {
         setError(describeError(err, 'Failed to create note'))
       }
     },
     [flushSave, refreshList],
-  )
-
-  const handleRename = useCallback(
-    async (id: string, title: string) => {
-      try {
-        const renamed = await storage.renameNote(id, title)
-        await refreshList()
-        if (activeNoteRef.current?.id === id) setActiveNote(renamed)
-      } catch (err) {
-        setError(describeError(err, 'Failed to rename note'))
-      }
-    },
-    [refreshList],
   )
 
   const handleDelete = useCallback(
@@ -136,6 +152,7 @@ export default function App() {
         await refreshList()
         if (activeNoteRef.current?.id === id) {
           setActiveNote(null)
+          setEditorKey(null)
           setSaveStatus('idle')
         }
       } catch (err) {
@@ -172,7 +189,6 @@ export default function App() {
           selectedId={activeNote?.id ?? null}
           onSelect={openNote}
           onCreate={handleCreate}
-          onRename={handleRename}
           onDelete={handleDelete}
         />
       </aside>
@@ -181,6 +197,14 @@ export default function App() {
           <div className="flex items-center justify-between bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900 dark:text-red-100">
             <span>{error}</span>
             <button type="button" className="underline" onClick={() => setError(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        {notice && (
+          <div className="flex items-center justify-between bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-100">
+            <span>{notice}</span>
+            <button type="button" className="underline" onClick={() => setNotice(null)}>
               Dismiss
             </button>
           </div>
@@ -217,7 +241,7 @@ export default function App() {
         )}
         {activeNote ? (
           <NoteEditor
-            key={activeNote.id}
+            key={editorKey}
             value={activeNote.content}
             onChange={handleChange}
             onOpenLink={openNoteByTitle}

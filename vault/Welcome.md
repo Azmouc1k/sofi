@@ -1,4 +1,5 @@
-# Welcome
+# hiii
+sheee
 
 This is your vault. Notes are plain Markdown files stored in the `vault/`
 folder, so they're yours — open them in any editor, sync them any way you

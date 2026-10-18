@@ -1,5 +1,7 @@
-# Example Note
+# say hiiii
 
+hello
+the note title not changing in the left panel
 This note was linked from [[Welcome]].
 bla bla blaaaa
 Typed links like `[[Welcome|related]]` will get colors and show up in a

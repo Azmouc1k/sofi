@@ -2,14 +2,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import cors from 'cors'
 import express from 'express'
-import {
-  createNote,
-  deleteNote,
-  listNotes,
-  readNote,
-  renameNote,
-  saveNote,
-} from './vault.ts'
+import { createNote, deleteNote, listNotes, readNote, saveNote } from './vault.ts'
 
 const PORT = 4000
 const VAULT_DIR = path.resolve(import.meta.dirname, '..', 'vault')
@@ -41,15 +34,6 @@ app.put('/api/notes/:id', async (req, res) => {
   const content = typeof req.body?.content === 'string' ? req.body.content : ''
   try {
     res.json(await saveNote(VAULT_DIR, req.params.id, content))
-  } catch {
-    res.status(404).json({ error: 'Note not found' })
-  }
-})
-
-app.patch('/api/notes/:id', async (req, res) => {
-  const title = typeof req.body?.title === 'string' ? req.body.title : ''
-  try {
-    res.json(await renameNote(VAULT_DIR, req.params.id, title))
   } catch {
     res.status(404).json({ error: 'Note not found' })
   }
