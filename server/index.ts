@@ -2,7 +2,15 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import cors from 'cors'
 import express from 'express'
-import { getBacklinks, indexNote, indexNoteRename, openDb, reconcileVault, removeNoteFromIndex } from './db.ts'
+import {
+  getBacklinks,
+  getGraphData,
+  indexNote,
+  indexNoteRename,
+  openDb,
+  reconcileVault,
+  removeNoteFromIndex,
+} from './db.ts'
 import { createNote, deleteNote, listNotes, readNote, saveNote } from './vault.ts'
 
 const PORT = 4000
@@ -32,6 +40,10 @@ app.get('/api/notes/:id', async (req, res) => {
 
 app.get('/api/notes/:id/backlinks', (req, res) => {
   res.json(getBacklinks(db, req.params.id))
+})
+
+app.get('/api/graph', (_req, res) => {
+  res.json(getGraphData(db))
 })
 
 app.post('/api/notes', async (req, res) => {

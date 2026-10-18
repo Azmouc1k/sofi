@@ -103,7 +103,7 @@ Only work on the current phase unless told otherwise.
     links, with suggested placement.
 13. **Desktop app** — package with Tauri.
 
-Current phase: **2**
+Current phase: **3**
 
 ## Folder structure (target)
 
@@ -157,3 +157,11 @@ vault/          sample notes for development (not user data)
 - Phase 2: the `tags` table from the data model isn't created yet — no
   phase needs it until the graph's tag filter (Phase 3) or later, so it's
   deferred rather than built unused.
+- Phase 3: shipped the core interactive graph (idle drift, hover,
+  hold-to-pull, click/shift-click, link-type filters) but deferred tag and
+  date-range filtering — no tags exist yet (see above), and date filtering
+  can be added on top later without reworking the rest.
+- Phase 3: links are always colored by type on the canvas (not only during
+  the hold-to-pull state) — gives type information at a glance, matching
+  the vision's "links have types" emphasis; dimmed when unrelated to the
+  current hover, full color + width when relevant.

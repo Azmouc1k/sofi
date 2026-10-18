@@ -1,3 +1,4 @@
+import type { GraphData } from '../types/graph'
 import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
 
@@ -42,6 +43,11 @@ export async function saveNote(id: string, content: string): Promise<NoteSummary
 
 export async function getBacklinks(id: string): Promise<Backlink[]> {
   const res = await fetch(`/api/notes/${encodeURIComponent(id)}/backlinks`)
+  return parseJsonOrThrow(res)
+}
+
+export async function getGraph(): Promise<GraphData> {
+  const res = await fetch('/api/graph')
   return parseJsonOrThrow(res)
 }
 

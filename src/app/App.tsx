@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { GraphView } from '../features/graph/GraphView'
 import { BacklinksPanel } from '../features/links/BacklinksPanel'
 import { NoteEditor } from '../features/notes/NoteEditor'
 import { NoteList } from '../features/notes/NoteList'
@@ -35,6 +36,7 @@ export default function App() {
   // different note changes this.
   const [editorKey, setEditorKey] = useState<string | null>(null)
   const [backlinks, setBacklinks] = useState<Backlink[]>([])
+  const [viewMode, setViewMode] = useState<'notes' | 'graph'>('notes')
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -210,81 +212,123 @@ export default function App() {
     }
   }, [])
 
+  const openNoteFromGraph = useCallback(
+    (id: string) => {
+      setViewMode('notes')
+      openNote(id)
+    },
+    [openNote],
+  )
+
   return (
     <div className="flex h-full">
-      <aside className="w-64 flex-shrink-0">
-        <NoteList
-          notes={notes}
-          selectedId={activeNote?.id ?? null}
-          onSelect={openNote}
-          onCreate={handleCreate}
-          onDelete={handleDelete}
-        />
-      </aside>
-      <main className="flex flex-1 flex-col overflow-hidden">
-        {error && (
-          <div className="flex items-center justify-between bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900 dark:text-red-100">
-            <span>{error}</span>
-            <button type="button" className="underline" onClick={() => setError(null)}>
-              Dismiss
-            </button>
-          </div>
-        )}
-        {notice && (
-          <div className="flex items-center justify-between bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-100">
-            <span>{notice}</span>
-            <button type="button" className="underline" onClick={() => setNotice(null)}>
-              Dismiss
-            </button>
-          </div>
-        )}
-        {pendingLinkTitle && (
-          <div className="flex items-center justify-between bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-900">
-            <span>Note "{pendingLinkTitle}" doesn't exist yet.</span>
-            <span className="flex gap-3">
-              <button
-                type="button"
-                onClick={confirmCreateFromLink}
-                className="font-medium text-purple-600 dark:text-purple-400"
-              >
-                Create it
-              </button>
-              <button
-                type="button"
-                onClick={() => setPendingLinkTitle(null)}
-                className="text-neutral-500"
-              >
-                Cancel
-              </button>
-            </span>
-          </div>
-        )}
-        {activeNote && (
-          <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-1 text-xs text-neutral-400 dark:border-neutral-800">
-            <span>{activeNote.title}</span>
-            <span>
-              {saveStatus === 'saving' && 'Saving…'}
-              {saveStatus === 'saved' && 'Saved'}
-            </span>
-          </div>
-        )}
-        {activeNote ? (
-          <NoteEditor
-            key={editorKey}
-            value={activeNote.content}
-            onChange={handleChange}
-            onOpenLink={openNoteByTitle}
+      <aside className="flex w-64 flex-shrink-0 flex-col">
+        <div className="flex border-b border-neutral-200 dark:border-neutral-800">
+          <button
+            type="button"
+            onClick={() => setViewMode('notes')}
+            className={`flex-1 px-3 py-2 text-sm ${
+              viewMode === 'notes'
+                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
+                : 'text-neutral-500'
+            }`}
+          >
+            Notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('graph')}
+            className={`flex-1 px-3 py-2 text-sm ${
+              viewMode === 'graph'
+                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
+                : 'text-neutral-500'
+            }`}
+          >
+            Graph
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <NoteList
+            notes={notes}
+            selectedId={activeNote?.id ?? null}
+            onSelect={openNote}
+            onCreate={handleCreate}
+            onDelete={handleDelete}
           />
-        ) : (
-          <div className="flex h-full items-center justify-center text-neutral-400">
-            Select or create a note to start writing.
-          </div>
-        )}
-      </main>
-      {activeNote && (
-        <aside className="w-64 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
-          <BacklinksPanel backlinks={backlinks} onOpenNote={openNote} />
-        </aside>
+        </div>
+      </aside>
+      {viewMode === 'graph' ? (
+        <main className="flex-1 overflow-hidden">
+          <GraphView onOpenNote={openNoteFromGraph} />
+        </main>
+      ) : (
+        <>
+          <main className="flex flex-1 flex-col overflow-hidden">
+            {error && (
+              <div className="flex items-center justify-between bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900 dark:text-red-100">
+                <span>{error}</span>
+                <button type="button" className="underline" onClick={() => setError(null)}>
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {notice && (
+              <div className="flex items-center justify-between bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-100">
+                <span>{notice}</span>
+                <button type="button" className="underline" onClick={() => setNotice(null)}>
+                  Dismiss
+                </button>
+              </div>
+            )}
+            {pendingLinkTitle && (
+              <div className="flex items-center justify-between bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-900">
+                <span>Note "{pendingLinkTitle}" doesn't exist yet.</span>
+                <span className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={confirmCreateFromLink}
+                    className="font-medium text-purple-600 dark:text-purple-400"
+                  >
+                    Create it
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingLinkTitle(null)}
+                    className="text-neutral-500"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              </div>
+            )}
+            {activeNote && (
+              <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-1 text-xs text-neutral-400 dark:border-neutral-800">
+                <span>{activeNote.title}</span>
+                <span>
+                  {saveStatus === 'saving' && 'Saving…'}
+                  {saveStatus === 'saved' && 'Saved'}
+                </span>
+              </div>
+            )}
+            {activeNote ? (
+              <NoteEditor
+                key={editorKey}
+                value={activeNote.content}
+                onChange={handleChange}
+                onOpenLink={openNoteByTitle}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-neutral-400">
+                Select or create a note to start writing.
+              </div>
+            )}
+          </main>
+          {activeNote && (
+            <aside className="w-64 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
+              <BacklinksPanel backlinks={backlinks} onOpenNote={openNote} />
+            </aside>
+          )}
+        </>
       )}
     </div>
   )

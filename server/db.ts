@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { parseLinks } from '../src/features/links/parseLinks.ts'
+import type { GraphData } from '../src/types/graph.ts'
 import { EXT, parseHeadingTitle } from './vault.ts'
 
 export interface Backlink {
@@ -126,6 +127,19 @@ export function getBacklinks(db: DatabaseSync, noteId: string): Backlink[] {
     )
     .all(noteId) as unknown as Backlink[]
   return rows
+}
+
+export function getGraphData(db: DatabaseSync): GraphData {
+  const nodes = db
+    .prepare('SELECT id, title, updated_at AS updatedAt FROM notes')
+    .all() as unknown as GraphData['nodes']
+  const links = db
+    .prepare(
+      `SELECT source_note_id AS source, target_note_id AS target, type
+       FROM links WHERE target_note_id IS NOT NULL`,
+    )
+    .all() as unknown as GraphData['links']
+  return { nodes, links }
 }
 
 // Scans the vault on startup and brings the index in line with the files —
