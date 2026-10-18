@@ -6,6 +6,8 @@ import type { Note, NoteSummary } from '../types/note'
 
 const SAVE_DELAY_MS = 500
 
+type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved'
+
 function describeError(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
@@ -14,6 +16,8 @@ export default function App() {
   const [notes, setNotes] = useState<NoteSummary[]>([])
   const [activeNote, setActiveNote] = useState<Note | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const [pendingLinkTitle, setPendingLinkTitle] = useState<string | null>(null)
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -45,10 +49,14 @@ export default function App() {
     const note = activeNoteRef.current
     if (!dirtyRef.current || !note) return
     dirtyRef.current = false
+    setSaveStatus('saving')
     try {
       await storage.saveNote(note.id, note.content)
       await refreshList()
+      setSaveStatus('saved')
     } catch (err) {
+      dirtyRef.current = true
+      setSaveStatus('unsaved')
       setError(describeError(err, 'Failed to save note'))
     }
   }, [refreshList])
@@ -58,6 +66,7 @@ export default function App() {
       await flushSave()
       try {
         setActiveNote(await storage.readNote(id))
+        setSaveStatus('idle')
       } catch (err) {
         setError(describeError(err, 'Failed to open note'))
       }
@@ -72,18 +81,25 @@ export default function App() {
         await openNote(existing.id)
         return
       }
-      if (!window.confirm(`Note "${title}" doesn't exist yet. Create it?`)) return
-      await flushSave()
-      try {
-        const created = await storage.createNote(title)
-        await refreshList()
-        setActiveNote(created)
-      } catch (err) {
-        setError(describeError(err, 'Failed to create note'))
-      }
+      setPendingLinkTitle(title)
     },
-    [notes, openNote, flushSave, refreshList],
+    [notes, openNote],
   )
+
+  const confirmCreateFromLink = useCallback(async () => {
+    const title = pendingLinkTitle
+    setPendingLinkTitle(null)
+    if (!title) return
+    await flushSave()
+    try {
+      const created = await storage.createNote(title)
+      await refreshList()
+      setActiveNote(created)
+      setSaveStatus('idle')
+    } catch (err) {
+      setError(describeError(err, 'Failed to create note'))
+    }
+  }, [pendingLinkTitle, flushSave, refreshList])
 
   const handleCreate = useCallback(
     async (title: string) => {
@@ -92,6 +108,7 @@ export default function App() {
         const created = await storage.createNote(title)
         await refreshList()
         setActiveNote(created)
+        setSaveStatus('idle')
       } catch (err) {
         setError(describeError(err, 'Failed to create note'))
       }
@@ -117,7 +134,10 @@ export default function App() {
       try {
         await storage.deleteNote(id)
         await refreshList()
-        if (activeNoteRef.current?.id === id) setActiveNote(null)
+        if (activeNoteRef.current?.id === id) {
+          setActiveNote(null)
+          setSaveStatus('idle')
+        }
       } catch (err) {
         setError(describeError(err, 'Failed to delete note'))
       }
@@ -129,6 +149,7 @@ export default function App() {
     (content: string) => {
       setActiveNote((prev) => (prev ? { ...prev, content } : prev))
       dirtyRef.current = true
+      setSaveStatus('unsaved')
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
         flushSave()
@@ -162,6 +183,36 @@ export default function App() {
             <button type="button" className="underline" onClick={() => setError(null)}>
               Dismiss
             </button>
+          </div>
+        )}
+        {pendingLinkTitle && (
+          <div className="flex items-center justify-between bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-900">
+            <span>Note "{pendingLinkTitle}" doesn't exist yet.</span>
+            <span className="flex gap-3">
+              <button
+                type="button"
+                onClick={confirmCreateFromLink}
+                className="font-medium text-purple-600 dark:text-purple-400"
+              >
+                Create it
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingLinkTitle(null)}
+                className="text-neutral-500"
+              >
+                Cancel
+              </button>
+            </span>
+          </div>
+        )}
+        {activeNote && (
+          <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-1 text-xs text-neutral-400 dark:border-neutral-800">
+            <span>{activeNote.title}</span>
+            <span>
+              {saveStatus === 'saving' && 'Saving…'}
+              {saveStatus === 'saved' && 'Saved'}
+            </span>
           </div>
         )}
         {activeNote ? (

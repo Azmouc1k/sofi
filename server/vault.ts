@@ -26,13 +26,8 @@ function idToFilePath(vaultDir: string, id: string): string {
   return path.join(vaultDir, `${id}${EXT}`)
 }
 
-function titleFromContent(content: string, fallback: string): string {
-  const firstLine = content.split('\n', 1)[0]?.trim()
-  if (firstLine?.startsWith('# ')) {
-    return firstLine.slice(2).trim()
-  }
-  return fallback
-}
+// The filename (without extension) is the note's id and its title — the
+// single source of truth, so renaming can never leave the two out of sync.
 
 export async function listNotes(vaultDir: string): Promise<NoteSummary[]> {
   const entries = await fs.readdir(vaultDir, { withFileTypes: true })
@@ -41,16 +36,8 @@ export async function listNotes(vaultDir: string): Promise<NoteSummary[]> {
       .filter((entry) => entry.isFile() && entry.name.endsWith(EXT))
       .map(async (entry) => {
         const id = entry.name.slice(0, -EXT.length)
-        const filePath = path.join(vaultDir, entry.name)
-        const [content, stat] = await Promise.all([
-          fs.readFile(filePath, 'utf-8'),
-          fs.stat(filePath),
-        ])
-        return {
-          id,
-          title: titleFromContent(content, id),
-          updatedAt: stat.mtime.toISOString(),
-        }
+        const stat = await fs.stat(path.join(vaultDir, entry.name))
+        return { id, title: id, updatedAt: stat.mtime.toISOString() }
       }),
   )
   return notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -62,12 +49,7 @@ export async function readNote(vaultDir: string, id: string): Promise<Note> {
     fs.readFile(filePath, 'utf-8'),
     fs.stat(filePath),
   ])
-  return {
-    id,
-    title: titleFromContent(content, id),
-    content,
-    updatedAt: stat.mtime.toISOString(),
-  }
+  return { id, title: id, content, updatedAt: stat.mtime.toISOString() }
 }
 
 export async function createNote(vaultDir: string, title: string): Promise<Note> {
@@ -76,7 +58,7 @@ export async function createNote(vaultDir: string, title: string): Promise<Note>
   const filePath = idToFilePath(vaultDir, id)
   await fs.writeFile(filePath, content, { flag: 'wx' })
   const stat = await fs.stat(filePath)
-  return { id, title, content, updatedAt: stat.mtime.toISOString() }
+  return { id, title: id, content, updatedAt: stat.mtime.toISOString() }
 }
 
 export async function saveNote(
@@ -87,7 +69,7 @@ export async function saveNote(
   const filePath = idToFilePath(vaultDir, id)
   await fs.writeFile(filePath, content)
   const stat = await fs.stat(filePath)
-  return { id, title: titleFromContent(content, id), updatedAt: stat.mtime.toISOString() }
+  return { id, title: id, updatedAt: stat.mtime.toISOString() }
 }
 
 export async function renameNote(
@@ -103,7 +85,7 @@ export async function renameNote(
     await fs.rename(oldPath, newPath)
   }
   const stat = await fs.stat(idToFilePath(vaultDir, newId))
-  return { id: newId, title: newTitle, content, updatedAt: stat.mtime.toISOString() }
+  return { id: newId, title: newId, content, updatedAt: stat.mtime.toISOString() }
 }
 
 export async function deleteNote(vaultDir: string, id: string): Promise<void> {
