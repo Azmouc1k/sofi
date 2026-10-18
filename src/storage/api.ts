@@ -1,3 +1,4 @@
+import type { DashboardData } from '../types/dashboard'
 import type { GraphData } from '../types/graph'
 import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
@@ -48,6 +49,11 @@ export async function getBacklinks(id: string): Promise<Backlink[]> {
 
 export async function getGraph(): Promise<GraphData> {
   const res = await fetch('/api/graph')
+  return parseJsonOrThrow(res)
+}
+
+export async function getDashboard(): Promise<DashboardData> {
+  const res = await fetch('/api/dashboard')
   return parseJsonOrThrow(res)
 }
 

@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { parseLinks } from '../src/features/links/parseLinks.ts'
+import type { DashboardData } from '../src/types/dashboard.ts'
 import type { GraphData } from '../src/types/graph.ts'
 import { EXT, parseHeadingTitle } from './vault.ts'
 
@@ -127,6 +128,37 @@ export function getBacklinks(db: DatabaseSync, noteId: string): Backlink[] {
     )
     .all(noteId) as unknown as Backlink[]
   return rows
+}
+
+const STALE_DAYS = 30
+const DASHBOARD_LIST_LIMIT = 8
+
+export function getDashboardData(db: DatabaseSync): DashboardData {
+  const recent = db
+    .prepare('SELECT id, title, updated_at AS updatedAt FROM notes ORDER BY updated_at DESC LIMIT ?')
+    .all(DASHBOARD_LIST_LIMIT) as unknown as DashboardData['recent']
+
+  const staleCutoff = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const stale = db
+    .prepare(
+      'SELECT id, title, updated_at AS updatedAt FROM notes WHERE updated_at < ? ORDER BY updated_at ASC LIMIT ?',
+    )
+    .all(staleCutoff, DASHBOARD_LIST_LIMIT) as unknown as DashboardData['stale']
+
+  // Notes on either side of a "question"-typed link — a lightweight way to
+  // surface things flagged as open questions without a dedicated feature.
+  const openQuestions = db
+    .prepare(
+      `SELECT DISTINCT n.id, n.title, n.updated_at AS updatedAt
+       FROM notes n
+       JOIN links l ON l.source_note_id = n.id OR l.target_note_id = n.id
+       WHERE l.type = 'question'
+       ORDER BY n.updated_at DESC
+       LIMIT ?`,
+    )
+    .all(DASHBOARD_LIST_LIMIT) as unknown as DashboardData['openQuestions']
+
+  return { recent, stale, openQuestions }
 }
 
 export function getGraphData(db: DatabaseSync): GraphData {

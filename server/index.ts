@@ -4,6 +4,7 @@ import cors from 'cors'
 import express from 'express'
 import {
   getBacklinks,
+  getDashboardData,
   getGraphData,
   indexNote,
   indexNoteRename,
@@ -44,6 +45,10 @@ app.get('/api/notes/:id/backlinks', (req, res) => {
 
 app.get('/api/graph', (_req, res) => {
   res.json(getGraphData(db))
+})
+
+app.get('/api/dashboard', (_req, res) => {
+  res.json(getDashboardData(db))
 })
 
 app.post('/api/notes', async (req, res) => {

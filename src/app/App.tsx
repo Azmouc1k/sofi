@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Dashboard } from '../features/dashboard/Dashboard'
 import { GraphView } from '../features/graph/GraphView'
 import { BacklinksPanel } from '../features/links/BacklinksPanel'
 import { NoteEditor } from '../features/notes/NoteEditor'
@@ -36,7 +37,7 @@ export default function App() {
   // different note changes this.
   const [editorKey, setEditorKey] = useState<string | null>(null)
   const [backlinks, setBacklinks] = useState<Backlink[]>([])
-  const [viewMode, setViewMode] = useState<'notes' | 'graph'>('notes')
+  const [viewMode, setViewMode] = useState<'notes' | 'graph' | 'dashboard'>('notes')
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -169,6 +170,7 @@ export default function App() {
         setEditorKey(created.id)
         setSaveStatus('idle')
         setNotice(noticeForCollision(title, created.id, 'Created'))
+        setViewMode('notes')
       } catch (err) {
         setError(describeError(err, 'Failed to create note'))
       }
@@ -212,7 +214,7 @@ export default function App() {
     }
   }, [])
 
-  const openNoteFromGraph = useCallback(
+  const openNoteFromOverview = useCallback(
     (id: string) => {
       setViewMode('notes')
       openNote(id)
@@ -226,8 +228,19 @@ export default function App() {
         <div className="flex border-b border-neutral-200 dark:border-neutral-800">
           <button
             type="button"
+            onClick={() => setViewMode('dashboard')}
+            className={`flex-1 px-2 py-2 text-sm ${
+              viewMode === 'dashboard'
+                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
+                : 'text-neutral-500'
+            }`}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
             onClick={() => setViewMode('notes')}
-            className={`flex-1 px-3 py-2 text-sm ${
+            className={`flex-1 px-2 py-2 text-sm ${
               viewMode === 'notes'
                 ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
                 : 'text-neutral-500'
@@ -238,7 +251,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setViewMode('graph')}
-            className={`flex-1 px-3 py-2 text-sm ${
+            className={`flex-1 px-2 py-2 text-sm ${
               viewMode === 'graph'
                 ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
                 : 'text-neutral-500'
@@ -251,7 +264,7 @@ export default function App() {
           <NoteList
             notes={notes}
             selectedId={activeNote?.id ?? null}
-            onSelect={openNote}
+            onSelect={openNoteFromOverview}
             onCreate={handleCreate}
             onDelete={handleDelete}
           />
@@ -259,7 +272,11 @@ export default function App() {
       </aside>
       {viewMode === 'graph' ? (
         <main className="flex-1 overflow-hidden">
-          <GraphView onOpenNote={openNoteFromGraph} />
+          <GraphView onOpenNote={openNoteFromOverview} />
+        </main>
+      ) : viewMode === 'dashboard' ? (
+        <main className="flex-1 overflow-hidden">
+          <Dashboard onOpenNote={openNoteFromOverview} onCaptured={refreshList} />
         </main>
       ) : (
         <>

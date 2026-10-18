@@ -103,7 +103,7 @@ Only work on the current phase unless told otherwise.
     links, with suggested placement.
 13. **Desktop app** — package with Tauri.
 
-Current phase: **3**
+Current phase: **4 — built, now in the week-long usage pause before Phase 5**
 
 ## Folder structure (target)
 
@@ -165,3 +165,15 @@ vault/          sample notes for development (not user data)
   the hold-to-pull state) — gives type information at a glance, matching
   the vision's "links have types" emphasis; dimmed when unrelated to the
   current hover, full color + width when relevant.
+- Phase 4: "open questions" surfaces notes on either side of a
+  'question'-typed link (`[[Note|question]]`) rather than a separate
+  flagging mechanism — reuses the typed-link infrastructure instead of
+  adding a new concept.
+- Phase 4: "stale" uses `updated_at` with a 30-day threshold, not
+  `last_verified_at` (that column exists in the schema but stays unused
+  until Phase 8 builds the "still true?" verification flow).
+- Phase 4: quick capture stays on the dashboard after saving (no
+  navigation) — the point is zero context switch; it shows a confirmation
+  and refreshes the lists in place instead.
+- Phase 4 is the explicit stop-here point in the phases list — the app
+  should get used for about a week before starting Phase 5.
