@@ -23,7 +23,7 @@ export function QuickCapture({ onCapture }: QuickCaptureProps) {
   }
 
   return (
-    <div className="rounded border border-neutral-200 p-3 dark:border-neutral-800">
+    <div>
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}

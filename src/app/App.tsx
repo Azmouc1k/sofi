@@ -8,6 +8,7 @@ import { extractHeadingTitle } from '../features/notes/parseTitle'
 import * as storage from '../storage/api'
 import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
+import { ViewTabs, type ViewMode } from './ViewTabs'
 
 const SAVE_DELAY_MS = 500
 
@@ -37,7 +38,7 @@ export default function App() {
   // different note changes this.
   const [editorKey, setEditorKey] = useState<string | null>(null)
   const [backlinks, setBacklinks] = useState<Backlink[]>([])
-  const [viewMode, setViewMode] = useState<'notes' | 'graph' | 'dashboard'>('notes')
+  const [viewMode, setViewMode] = useState<ViewMode>('notes')
 
   const activeNoteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -222,44 +223,22 @@ export default function App() {
     [openNote],
   )
 
+  // The dashboard takes the whole window: no sidebar, the graph fills the
+  // screen, and the view tabs float over it instead.
+  if (viewMode === 'dashboard') {
+    return (
+      <Dashboard
+        onOpenNote={openNoteFromOverview}
+        onCaptured={refreshList}
+        navigation={<ViewTabs active={viewMode} onChange={setViewMode} variant="floating" />}
+      />
+    )
+  }
+
   return (
     <div className="flex h-full">
       <aside className="flex w-64 flex-shrink-0 flex-col">
-        <div className="flex border-b border-neutral-200 dark:border-neutral-800">
-          <button
-            type="button"
-            onClick={() => setViewMode('dashboard')}
-            className={`flex-1 px-2 py-2 text-sm ${
-              viewMode === 'dashboard'
-                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
-                : 'text-neutral-500'
-            }`}
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('notes')}
-            className={`flex-1 px-2 py-2 text-sm ${
-              viewMode === 'notes'
-                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
-                : 'text-neutral-500'
-            }`}
-          >
-            Notes
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('graph')}
-            className={`flex-1 px-2 py-2 text-sm ${
-              viewMode === 'graph'
-                ? 'border-b-2 border-neutral-900 font-medium dark:border-neutral-100'
-                : 'text-neutral-500'
-            }`}
-          >
-            Graph
-          </button>
-        </div>
+        <ViewTabs active={viewMode} onChange={setViewMode} />
         <div className="flex-1 overflow-hidden">
           <NoteList
             notes={notes}
@@ -273,10 +252,6 @@ export default function App() {
       {viewMode === 'graph' ? (
         <main className="flex-1 overflow-hidden">
           <GraphView onOpenNote={openNoteFromOverview} />
-        </main>
-      ) : viewMode === 'dashboard' ? (
-        <main className="flex-1 overflow-hidden">
-          <Dashboard onOpenNote={openNoteFromOverview} onCaptured={refreshList} />
         </main>
       ) : (
         <>

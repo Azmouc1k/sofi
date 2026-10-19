@@ -4,13 +4,15 @@ interface GraphFiltersProps {
   types: string[]
   hidden: Set<string>
   onToggle: (type: string) => void
+  // Position + direction classes; defaults to a column in the top-left.
+  className?: string
 }
 
-export function GraphFilters({ types, hidden, onToggle }: GraphFiltersProps) {
+export function GraphFilters({ types, hidden, onToggle, className = 'left-3 top-3 flex-col' }: GraphFiltersProps) {
   if (types.length === 0) return null
 
   return (
-    <div className="pointer-events-auto absolute left-3 top-3 flex flex-col gap-1 rounded border border-neutral-700 bg-neutral-900/90 p-2 text-xs text-neutral-300">
+    <div className={`pointer-events-auto absolute ${className} flex gap-1 rounded border border-neutral-700 bg-neutral-900/90 p-2 text-xs text-neutral-300`}>
       {types.map((type) => {
         const config = getLinkTypeConfig(type)
         const isHidden = hidden.has(type)

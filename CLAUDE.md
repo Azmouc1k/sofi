@@ -175,5 +175,16 @@ vault/          sample notes for development (not user data)
 - Phase 4: quick capture stays on the dashboard after saving (no
   navigation) — the point is zero context switch; it shows a confirmation
   and refreshes the lists in place instead.
+- Phase 4 (revised during the usage week): the dashboard is now a
+  full-screen graph with docked, collapsible panels floating on both
+  sides (left: recent / open questions / stale; right: quick capture,
+  note preview, links-by-type chart), plus a welcome line. The app
+  sidebar is hidden there; the view tabs float in the top-left instead.
+  Panels dock rather than drag — always tidy, never overlap.
+- Graph interaction moved to pointer events so mouse, touch and pen share
+  one code path: drag empty space to pan, wheel/pinch to zoom, drag a
+  node to move it (stays put only if pinned). Touch has no hover, so the
+  first tap focuses a node (card + highlight), a second tap opens it, and
+  press-and-hold triggers the pull.
 - Phase 4 is the explicit stop-here point in the phases list — the app
   should get used for about a week before starting Phase 5.
