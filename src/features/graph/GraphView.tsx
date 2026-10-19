@@ -10,6 +10,7 @@ import {
 } from 'd3-force'
 import { useEffect, useRef, useState } from 'react'
 import { getLinkTypeConfig, LINK_TYPES } from '../../lib/linkTypes'
+import { useTheme } from '../../lib/theme'
 import { extractPreview } from '../notes/notePreview'
 import * as storage from '../../storage/api'
 import type { GraphData } from '../../types/graph'
@@ -41,6 +42,25 @@ interface HoverCard {
 interface LegendEntry {
   type: string
   count: number
+}
+
+interface GraphColors {
+  label: string
+  node: string
+  nodePinned: string
+  pinRing: string
+}
+
+// Reads the theme's graph colors from the CSS variables in index.css.
+function readGraphColors(): GraphColors {
+  const style = getComputedStyle(document.documentElement)
+  const read = (name: string) => style.getPropertyValue(name).trim()
+  return {
+    label: read('--graph-label'),
+    node: read('--graph-node'),
+    nodePinned: read('--graph-node-pinned'),
+    pinRing: read('--graph-pin-ring'),
+  }
 }
 
 interface Point {
@@ -156,6 +176,16 @@ export function GraphView({
   const gestureRef = useRef<Gesture>({ kind: 'idle' })
   const hiddenTypesRef = useRef<Set<string>>(hiddenTypes)
   hiddenTypesRef.current = hiddenTypes
+  const colorsRef = useRef<GraphColors>(readGraphColors())
+
+  // The theme toggle has already switched the CSS variables by the time
+  // this runs, so re-read them and redraw straight away.
+  const theme = useTheme()
+  useEffect(() => {
+    colorsRef.current = readGraphColors()
+    draw()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme])
 
   // Loads the graph once per mount (the parent only mounts this while the
   // graph tab is active, so re-opening it refetches fresh data).
@@ -321,6 +351,7 @@ export function GraphView({
     const { width, height } = sizeRef.current
     const dpr = window.devicePixelRatio || 1
     const view = viewRef.current
+    const colors = colorsRef.current
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, width, height)
     // From here on we draw in world coordinates; the transform applies pan
@@ -348,17 +379,17 @@ export function GraphView({
       const y = (node.y ?? 0) + node.pullY
       const r = node.radius * node.scale
       ctx.globalAlpha = Math.max(0, Math.min(1, node.dim))
-      ctx.fillStyle = node.pinned ? '#c084fc' : '#9ca3af'
+      ctx.fillStyle = node.pinned ? colors.nodePinned : colors.node
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
       ctx.fill()
       if (node.pinned) {
-        ctx.strokeStyle = '#f3f4f6'
+        ctx.strokeStyle = colors.pinRing
         ctx.lineWidth = 1.5 / view.k
         ctx.stroke()
       }
       if (showLabels && node.dim > 0.5) {
-        ctx.fillStyle = '#e5e7eb'
+        ctx.fillStyle = colors.label
         ctx.font = `${11 / view.k}px system-ui, sans-serif`
         ctx.textBaseline = 'middle'
         ctx.fillText(node.title, x + r + 4 / view.k, y)
@@ -698,21 +729,21 @@ export function GraphView({
       <button
         type="button"
         onClick={resetView}
-        className={`absolute ${resetViewClassName} rounded border border-neutral-700 bg-neutral-900/90 px-2 py-1 text-xs text-neutral-300 hover:text-neutral-100`}
+        className={`absolute ${resetViewClassName} rounded border border-neutral-200 bg-white/90 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-300 dark:hover:text-neutral-100`}
       >
         Reset view
       </button>
       {hoverCard && (
         <div
           ref={cardRef}
-          className="pointer-events-none absolute left-0 top-0 max-w-[220px] rounded border border-neutral-700 bg-neutral-900/95 px-2 py-1.5 text-xs text-neutral-100 shadow-lg"
+          className="pointer-events-none absolute left-0 top-0 max-w-[220px] rounded border border-neutral-200 bg-white/95 px-2 py-1.5 text-xs text-neutral-900 shadow-lg dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-100"
         >
           <div className="font-medium">{hoverCard.title}</div>
           {hoverCard.preview && (
-            <div className="mt-0.5 line-clamp-2 text-neutral-400">{hoverCard.preview}</div>
+            <div className="mt-0.5 line-clamp-2 text-neutral-500 dark:text-neutral-400">{hoverCard.preview}</div>
           )}
           {legend && legend.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 border-t border-neutral-700 pt-1 text-neutral-400">
+            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 border-t border-neutral-200 pt-1 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
               {legend.map(({ type, count }) => (
                 <span key={type} className="flex items-center gap-1">
                   <span

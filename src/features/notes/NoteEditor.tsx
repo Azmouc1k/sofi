@@ -8,7 +8,7 @@ import {
   type ViewUpdate,
 } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
-import { useEffect, useRef } from 'react'
+import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
 import { getLinkTypeConfig } from '../../lib/linkTypes'
 import { parseLinks } from '../links/parseLinks'
 
@@ -39,21 +39,41 @@ const linkHighlighter = ViewPlugin.fromClass(
   { decorations: (instance) => instance.decorations },
 )
 
+export interface NoteEditorHandle {
+  // Puts the cursor at the very start of the body (used when leaving the
+  // title field with Enter / ArrowDown).
+  focusStart: () => void
+}
+
 interface NoteEditorProps {
   value: string
   onChange: (value: string) => void
   onOpenLink: (target: string) => void
+  // ArrowUp on the first line moves focus back up to the title field.
+  onExitTop?: () => void
+  ref?: Ref<NoteEditorHandle>
 }
 
 // Remounted (via `key={note.id}` in the parent) whenever the active note
 // changes, so this only needs to handle edits within a single note.
-export function NoteEditor({ value, onChange, onOpenLink }: NoteEditorProps) {
+export function NoteEditor({ value, onChange, onOpenLink, onExitTop, ref }: NoteEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const onOpenLinkRef = useRef(onOpenLink)
+  const onExitTopRef = useRef(onExitTop)
   onChangeRef.current = onChange
   onOpenLinkRef.current = onOpenLink
+  onExitTopRef.current = onExitTop
+
+  useImperativeHandle(ref, () => ({
+    focusStart() {
+      const view = viewRef.current
+      if (!view) return
+      view.dispatch({ selection: { anchor: 0 } })
+      view.focus()
+    },
+  }))
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -69,6 +89,13 @@ export function NoteEditor({ value, onChange, onOpenLink }: NoteEditorProps) {
         }
       }),
       EditorView.domEventHandlers({
+        keydown(event, view) {
+          if (event.key !== 'ArrowUp' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+          const { main } = view.state.selection
+          if (!main.empty || view.state.doc.lineAt(main.head).number !== 1 || !onExitTopRef.current) return
+          event.preventDefault()
+          onExitTopRef.current()
+        },
         mousedown(event, view) {
           if (!(event.ctrlKey || event.metaKey)) return
           const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
@@ -111,5 +138,5 @@ export function NoteEditor({ value, onChange, onOpenLink }: NoteEditorProps) {
     }
   }, [value])
 
-  return <div ref={containerRef} className="h-full overflow-auto text-left text-base" />
+  return <div ref={containerRef} className="min-h-0 flex-1 overflow-auto text-left text-base" />
 }

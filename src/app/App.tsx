@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dashboard } from '../features/dashboard/Dashboard'
 import { GraphView } from '../features/graph/GraphView'
 import { BacklinksPanel } from '../features/links/BacklinksPanel'
-import { NoteEditor } from '../features/notes/NoteEditor'
+import { normalizeTitle } from '../features/links/normalizeTitle'
+import { NoteEditor, type NoteEditorHandle } from '../features/notes/NoteEditor'
 import { NoteList } from '../features/notes/NoteList'
+import { NoteTitle } from '../features/notes/NoteTitle'
 import { extractHeadingTitle } from '../features/notes/parseTitle'
+import { replaceBody, replaceTitle, splitTitle } from '../features/notes/splitTitle'
 import * as storage from '../storage/api'
 import type { Backlink } from '../types/link'
 import type { Note, NoteSummary } from '../types/note'
@@ -41,6 +44,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('notes')
 
   const activeNoteRef = useRef<Note | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<NoteEditorHandle>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dirtyRef = useRef(false)
 
@@ -134,7 +139,8 @@ export default function App() {
 
   const openNoteByTitle = useCallback(
     async (title: string) => {
-      const existing = notes.find((note) => note.title.toLowerCase() === title.toLowerCase())
+      const key = normalizeTitle(title)
+      const existing = notes.find((note) => normalizeTitle(note.title) === key)
       if (existing) {
         await openNote(existing.id)
         return
@@ -196,9 +202,12 @@ export default function App() {
     [refreshList],
   )
 
+  // Takes an updater rather than the new content: the title field and the
+  // body editor each change only their own part of the file, computed from
+  // the latest content so quick edits in both never overwrite each other.
   const handleChange = useCallback(
-    (content: string) => {
-      setActiveNote((prev) => (prev ? { ...prev, content } : prev))
+    (update: (content: string) => string) => {
+      setActiveNote((prev) => (prev ? { ...prev, content: update(prev.content) } : prev))
       dirtyRef.current = true
       setSaveStatus('unsaved')
       if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -303,12 +312,23 @@ export default function App() {
               </div>
             )}
             {activeNote ? (
-              <NoteEditor
-                key={editorKey}
-                value={activeNote.content}
-                onChange={handleChange}
-                onOpenLink={openNoteByTitle}
-              />
+              <>
+                <NoteTitle
+                  key={`title:${editorKey}`}
+                  ref={titleInputRef}
+                  title={splitTitle(activeNote.content).title ?? activeNote.title}
+                  onChange={(title) => handleChange((content) => replaceTitle(content, title))}
+                  onExit={() => editorRef.current?.focusStart()}
+                />
+                <NoteEditor
+                  key={`body:${editorKey}`}
+                  ref={editorRef}
+                  value={splitTitle(activeNote.content).body}
+                  onChange={(body) => handleChange((content) => replaceBody(content, body))}
+                  onOpenLink={openNoteByTitle}
+                  onExitTop={() => titleInputRef.current?.focus()}
+                />
+              </>
             ) : (
               <div className="flex h-full items-center justify-center text-neutral-400">
                 Select or create a note to start writing.

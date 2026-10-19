@@ -1,7 +1,25 @@
 @import 'tailwindcss';
 
+/* `dark:` follows the .dark class on <html> (set by the theme toggle)
+   instead of only the operating system setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Colors the graph canvas draws with — canvas can't use Tailwind classes,
+   so GraphView reads these variables whenever the theme changes. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --graph-label: #374151;
+  --graph-node: #6b7280;
+  --graph-node-pinned: #9333ea;
+  --graph-pin-ring: #ffffff;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --graph-label: #e5e7eb;
+  --graph-node: #9ca3af;
+  --graph-node-pinned: #c084fc;
+  --graph-pin-ring: #f3f4f6;
 }
 
 body {

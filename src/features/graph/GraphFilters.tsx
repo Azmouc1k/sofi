@@ -12,7 +12,7 @@ export function GraphFilters({ types, hidden, onToggle, className = 'left-3 top-
   if (types.length === 0) return null
 
   return (
-    <div className={`pointer-events-auto absolute ${className} flex gap-1 rounded border border-neutral-700 bg-neutral-900/90 p-2 text-xs text-neutral-300`}>
+    <div className={`pointer-events-auto absolute ${className} flex gap-1 rounded border border-neutral-200 bg-white/90 p-2 text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-300`}>
       {types.map((type) => {
         const config = getLinkTypeConfig(type)
         const isHidden = hidden.has(type)
@@ -28,7 +28,7 @@ export function GraphFilters({ types, hidden, onToggle, className = 'left-3 top-
               className="inline-block h-2 w-2 rounded-full"
               style={{ backgroundColor: config.color, opacity: isHidden ? 0.3 : 1 }}
             />
-            <span className={isHidden ? 'text-neutral-500 line-through' : ''}>
+            <span className={isHidden ? 'text-neutral-400 line-through dark:text-neutral-500' : ''}>
               {config.label}
             </span>
           </label>

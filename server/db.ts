@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { normalizeTitle } from '../src/features/links/normalizeTitle.ts'
 import { parseLinks } from '../src/features/links/parseLinks.ts'
 import type { DashboardData } from '../src/types/dashboard.ts'
 import type { GraphData } from '../src/types/graph.ts'
@@ -52,11 +53,37 @@ export function openDb(dbPath: string): DatabaseSync {
 // Cheap at this vault's scale and avoids tracking invalidation by hand —
 // correctly handles renames (old target becomes unresolved, new target
 // resolves) and newly-created notes healing previously-broken links.
+//
+// Matching is case-insensitive (see normalizeTitle). It's done in JS rather
+// than SQL because SQLite's lower()/NOCASE only fold ASCII letters. If two
+// notes' titles differ only by case, the one with the smaller id wins.
 function reresolveLinkTargets(db: DatabaseSync): void {
-  db.prepare(
-    `UPDATE links
-     SET target_note_id = (SELECT id FROM notes WHERE notes.title = links.target_title)`,
-  ).run()
+  const notes = db.prepare('SELECT id, title FROM notes ORDER BY id').all() as unknown as {
+    id: string
+    title: string
+  }[]
+  const idByTitle = new Map<string, string>()
+  for (const note of notes) {
+    const key = normalizeTitle(note.title)
+    if (!idByTitle.has(key)) idByTitle.set(key, note.id)
+  }
+
+  const links = db.prepare('SELECT id, target_title FROM links').all() as unknown as {
+    id: number
+    target_title: string
+  }[]
+  const update = db.prepare('UPDATE links SET target_note_id = ? WHERE id = ?')
+  // One transaction for all the updates — much faster than committing each.
+  db.exec('BEGIN')
+  try {
+    for (const link of links) {
+      update.run(idByTitle.get(normalizeTitle(link.target_title)) ?? null, link.id)
+    }
+    db.exec('COMMIT')
+  } catch (err) {
+    db.exec('ROLLBACK')
+    throw err
+  }
 }
 
 function reindexOutgoingLinks(db: DatabaseSync, noteId: string, content: string): void {

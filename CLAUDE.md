@@ -150,6 +150,15 @@ vault/          sample notes for development (not user data)
 - Phase 1: note titles are heading-driven (the first-line "# Heading"),
   not a separate filename-only rename — matches Obsidian, chosen after a
   user mismatch where editing the heading didn't update the sidebar.
+- Title field (during the Phase 4 usage week): the editor shows the title
+  in its own input above the body, so select-all only covers the body.
+  The file format is unchanged — the title is still the first-line
+  "# Heading" (`splitTitle.ts` splits/joins it), chosen over Obsidian's
+  filename-only titles so existing notes need no migration and stay
+  readable in other editors.
+- Link targets match note titles case-insensitively (`normalizeTitle`,
+  shared by server and client). Done in JS, not SQL, because SQLite's
+  lower()/NOCASE only fold ASCII.
 - Phase 2: SQLite via Node's built-in `node:sqlite` instead of
   better-sqlite3 — avoids a native-compiled dependency; Node 24 already
   has it. WAL mode + a busy timeout avoid "database is locked" when
@@ -186,5 +195,11 @@ vault/          sample notes for development (not user data)
   node to move it (stays put only if pinned). Touch has no hover, so the
   first tap focuses a node (card + highlight), a second tap opens it, and
   press-and-hold triggers the pull.
+- Theme: light/dark toggle (sun/moon icon next to the view tabs). The
+  `dark` class on `<html>` is the single source of truth — Tailwind's
+  `dark:` variant uses it via `@custom-variant`. It starts from the
+  system setting, and an explicit choice is saved in localStorage. The
+  graph canvas reads its colors from CSS variables (`--graph-*` in
+  `index.css`), since canvas can't use Tailwind classes.
 - Phase 4 is the explicit stop-here point in the phases list — the app
   should get used for about a week before starting Phase 5.

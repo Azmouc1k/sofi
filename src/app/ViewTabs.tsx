@@ -1,3 +1,5 @@
+import { ThemeToggle } from '../components/ThemeToggle'
+
 export type ViewMode = 'notes' | 'graph' | 'dashboard'
 
 const VIEWS: { id: ViewMode; label: string }[] = [
@@ -36,6 +38,7 @@ export function ViewTabs({ active, onChange, variant = 'sidebar' }: ViewTabsProp
           {view.label}
         </button>
       ))}
+      <ThemeToggle />
     </div>
   )
 }

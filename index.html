@@ -7,6 +7,20 @@
     <title>Notes</title>
   </head>
   <body>
+    <script>
+      // Applies the saved (or system) theme before React loads, so the page
+      // never flashes the wrong colors. src/lib/theme.ts takes over after.
+      ;(function () {
+        var theme = null
+        try {
+          theme = localStorage.getItem('theme')
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
