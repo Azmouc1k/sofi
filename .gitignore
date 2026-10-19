@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Your notes — personal data, never committed. The server creates this
+# folder on startup if it's missing.
+vault/
+
 # SQLite index — rebuilt from the vault files on server startup
 server/*.db
 server/*.db-journal
