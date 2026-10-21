@@ -103,6 +103,9 @@ const MAX_RADIUS = 14
 const HOVER_GROW = 1.45
 const HOLD_MS = 600
 const PULL_STRENGTH = 0.3
+// After leaving a node mid-pull, the pull holds this long so the pointer
+// can reach a pulled-in neighbor before it eases back.
+const LEAVE_GRACE_MS = 150
 const EASE = 0.12
 const DIM_ALPHA = 0.18
 const DRAG_ALPHA_TARGET = 0.3
@@ -179,6 +182,10 @@ export function GraphView({
   const connectedIdsRef = useRef<Set<string>>(new Set())
   const holdStartRef = useRef<number | null>(null)
   const holdingRef = useRef(false)
+  // Last mouse position over the canvas (null when outside or not a mouse),
+  // re-hit-tested every frame since nodes move under a still cursor.
+  const mousePointRef = useRef<Point | null>(null)
+  const leaveStartRef = useRef<number | null>(null)
   const sizeRef = useRef({ width: 0, height: 0 })
   const viewRef = useRef<ViewTransform>(IDENTITY_VIEW)
   const pointersRef = useRef<Map<number, Point>>(new Map())
@@ -252,7 +259,6 @@ export function GraphView({
       .force('center', forceCenter(rect.width / 2, rect.height / 2))
       .force('collide', forceCollide<SimNode>((d) => d.radius + 6))
       .alphaDecay(0.02)
-      .on('tick', () => onTick())
     applyForces(simulation, getGraphSettings())
 
     simRef.current = simulation
@@ -333,8 +339,21 @@ export function GraphView({
     connectedIdsRef.current = connected
   }
 
-  function onTick() {
+  // Hover animation runs on its own frame loop rather than the simulation's
+  // tick: the simulation stops once settled (e.g. with idle drift at 0), and
+  // hover must keep animating after that.
+  useEffect(() => {
+    let frameId = requestAnimationFrame(function frame() {
+      animateFrame()
+      frameId = requestAnimationFrame(frame)
+    })
+    return () => cancelAnimationFrame(frameId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function animateFrame() {
     const now = Date.now()
+    updateMouseHover(now)
     const hovered = hoveredRef.current
     const connected = connectedIdsRef.current
     const holding =
@@ -356,19 +375,25 @@ export function GraphView({
     }
     holdingRef.current = holding
 
+    // Neighbors are pulled toward where the hovered node is drawn.
+    const hoveredX = hovered ? (hovered.x ?? 0) + hovered.pullX : 0
+    const hoveredY = hovered ? (hovered.y ?? 0) + hovered.pullY : 0
     for (const node of nodesRef.current) {
       const isHovered = hovered?.id === node.id
       const isConnected = connected.has(node.id)
       const scaleTarget = isHovered ? HOVER_GROW : 1
       const dimTarget = !hovered || isHovered || isConnected ? 1 : DIM_ALPHA
-      let pullTargetX = 0
-      let pullTargetY = 0
-      if (holding && isConnected && !node.pinned && hovered) {
-        pullTargetX = ((hovered.x ?? 0) - (node.x ?? 0)) * PULL_STRENGTH
-        pullTargetY = ((hovered.y ?? 0) - (node.y ?? 0)) * PULL_STRENGTH
-      }
       node.scale = ease(node.scale, scaleTarget)
       node.dim = ease(node.dim, dimTarget)
+      // The hovered node keeps its current pull, so a pulled-in neighbor
+      // that becomes hovered doesn't slide out from under the pointer.
+      if (isHovered) continue
+      let pullTargetX = 0
+      let pullTargetY = 0
+      if (holding && isConnected && !node.pinned) {
+        pullTargetX = (hoveredX - (node.x ?? 0)) * PULL_STRENGTH
+        pullTargetY = (hoveredY - (node.y ?? 0)) * PULL_STRENGTH
+      }
       node.pullX = ease(node.pullX, pullTargetX)
       node.pullY = ease(node.pullY, pullTargetY)
     }
@@ -455,23 +480,50 @@ export function GraphView({
     return { x: x * view.k + view.x, y: y * view.k + view.y }
   }
 
-  // Takes a screen-space point (relative to the canvas).
+  // Takes a screen-space point (relative to the canvas). Uses each node's
+  // normal radius, not its hover-grown one, so leaving a node takes the same
+  // distance as entering it. Where nodes overlap, the hovered one wins, so
+  // a neighbor pulled in close can't flicker the hover back and forth.
   function hitTest(point: Point): SimNode | null {
     const world = toWorld(point)
     const tolerance = 3 / viewRef.current.k
+    const hovered = hoveredRef.current
     let best: SimNode | null = null
     let bestDist = Infinity
     for (const node of nodesRef.current) {
       const nx = (node.x ?? 0) + node.pullX
       const ny = (node.y ?? 0) + node.pullY
-      const r = node.radius * node.scale + tolerance
       const dist = Math.hypot(world.x - nx, world.y - ny)
-      if (dist <= r && dist < bestDist) {
+      if (dist > node.radius + tolerance) continue
+      if (node === hovered) return node
+      if (dist < bestDist) {
         best = node
         bestDist = dist
       }
     }
     return best
+  }
+
+  // Mouse hover, checked on every frame from the last pointer position.
+  // Skipped while a button is down (drag/pan own the pointer then) and for
+  // touch, which focuses nodes by tapping instead.
+  function updateMouseHover(now: number) {
+    const point = mousePointRef.current
+    if (!point || pointersRef.current.size > 0) return
+    const hit = hitTest(point)
+    setCursor(hit ? 'pointer' : 'grab')
+    if (hit) {
+      leaveStartRef.current = null
+      setHovered(hit)
+      return
+    }
+    if (!hoveredRef.current) return
+    if (holdingRef.current) {
+      leaveStartRef.current ??= now
+      if (now - leaveStartRef.current < LEAVE_GRACE_MS) return
+    }
+    leaveStartRef.current = null
+    setHovered(null)
   }
 
   // Zooms by `factor`, keeping the world point under `anchor` in place —
@@ -537,7 +589,8 @@ export function GraphView({
   }
 
   function setCursor(cursor: string) {
-    if (canvasRef.current) canvasRef.current.style.cursor = cursor
+    const canvas = canvasRef.current
+    if (canvas && canvas.style.cursor !== cursor) canvas.style.cursor = cursor
   }
 
   function localPoint(event: React.PointerEvent<HTMLCanvasElement>): Point {
@@ -590,14 +643,13 @@ export function GraphView({
 
   function handlePointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const point = localPoint(event)
+    // Kept current during drags too, so hover resumes correctly on release.
+    if (event.pointerType === 'mouse') mousePointRef.current = point
 
     if (!pointersRef.current.has(event.pointerId)) {
-      // No button pressed: plain mouse hover.
-      if (event.pointerType === 'mouse') {
-        const hit = hitTest(point)
-        setHovered(hit)
-        setCursor(hit ? 'pointer' : 'grab')
-      }
+      // No button pressed: plain mouse hover. The frame loop re-checks it
+      // too; checking here as well makes the response immediate.
+      if (event.pointerType === 'mouse') updateMouseHover(Date.now())
       return
     }
     pointersRef.current.set(event.pointerId, point)
@@ -699,6 +751,8 @@ export function GraphView({
 
   function handlePointerLeave(event: React.PointerEvent<HTMLCanvasElement>) {
     if (event.pointerType !== 'mouse' || pointersRef.current.size > 0) return
+    mousePointRef.current = null
+    leaveStartRef.current = null
     setHovered(null)
   }
 

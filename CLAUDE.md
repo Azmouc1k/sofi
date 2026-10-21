@@ -228,6 +228,15 @@ vault/          sample notes for development (not user data)
   only re-centres the whole graph). Tightness multiplies d3's default
   link strength instead of replacing it. Defaults match the previous
   hardcoded values (gravity 0), so nothing changes until a slider moves.
+- Graph hover: animation runs on its own requestAnimationFrame loop, not
+  the simulation's tick — the simulation stops once settled (idle drift
+  0), which used to freeze hover. Mouse hover is re-hit-tested every
+  frame from the last pointer position (nodes move under a still
+  cursor), against each node's normal radius (not the hover-grown one),
+  preferring the hovered node where nodes overlap. Leaving a node
+  mid-pull keeps the pull 150 ms so the pointer can reach a pulled-in
+  neighbor, and the hovered node never eases its own pull, so it can't
+  slide out from under the pointer.
 - Progress screenshots: `npm run screenshots` (`scripts/screenshots.ts`,
   Playwright, dev-only) captures the notes, graph, graph-forces and
   dashboard views in light and dark from the running dev server into
