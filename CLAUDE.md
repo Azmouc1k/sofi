@@ -228,5 +228,12 @@ vault/          sample notes for development (not user data)
   only re-centres the whole graph). Tightness multiplies d3's default
   link strength instead of replacing it. Defaults match the previous
   hardcoded values (gravity 0), so nothing changes until a slider moves.
+- Progress screenshots: `npm run screenshots` (`scripts/screenshots.ts`,
+  Playwright, dev-only) captures the notes, graph, graph-forces and
+  dashboard views in light and dark from the running dev server into
+  `progress screens/<date>_<commit>/` (suffixed `+wip` if the tree is
+  dirty). Run after each feature commit and when a phase finishes; the
+  images are committed so the folder is a visual timeline. Captures the
+  real vault (it only holds example notes) and never edits notes.
 - Phase 4 is the explicit stop-here point in the phases list — the app
   should get used for about a week before starting Phase 5.
