@@ -15,6 +15,7 @@ const VIEWPORT = { width: 1440, height: 900 }
 // The graph starts from random positions; give it time to settle.
 const GRAPH_SETTLE_MS = 3000
 const THEMES = ['light', 'dark'] as const
+const OUT_ROOT = 'progress screens'
 
 function git(command: string): string {
   return execSync(`git ${command}`, { encoding: 'utf8' }).trim()
@@ -25,7 +26,8 @@ function git(command: string): string {
 function runFolderName(): string {
   const date = new Date().toISOString().slice(0, 10)
   const commit = git('rev-parse --short HEAD')
-  const dirty = git('status --porcelain') !== ''
+  // Earlier uncommitted captures don't count as changes to the app.
+  const dirty = git(`status --porcelain -- . ":(exclude)${OUT_ROOT}"`) !== ''
   return `${date}_${commit}${dirty ? '+wip' : ''}`
 }
 
@@ -65,7 +67,7 @@ async function captureTheme(page: Page, outDir: string, theme: string) {
 
 async function main() {
   await assertAppRunning()
-  const outDir = path.join('progress screens', runFolderName())
+  const outDir = path.join(OUT_ROOT, runFolderName())
   mkdirSync(outDir, { recursive: true })
 
   const browser = await chromium.launch()
