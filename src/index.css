@@ -4,10 +4,22 @@
    instead of only the operating system setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Colors the graph canvas draws with — canvas can't use Tailwind classes,
-   so GraphView reads these variables whenever the theme changes. */
+/* --graph-*: colors the graph canvas draws with — canvas can't use
+   Tailwind classes, so GraphView reads these whenever the theme changes.
+   --note-*: the editor's look (NoteEditor's CodeMirror theme uses them),
+   so both themes come from one place. */
 :root {
   color-scheme: light;
+  --page-bg: #ffffff;
+  --page-text: #262626;
+  --scrollbar: #d4d4d4;
+  --note-font: ui-monospace, 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --note-caret: #171717;
+  --note-selection: #dbeafe;
+  --note-muted: #a3a3a3;
+  --note-quote: #737373;
+  --note-code-bg: #f5f5f5;
+  --note-link: #2563eb;
   --graph-label: #374151;
   --graph-node: #6b7280;
   --graph-node-pinned: #9333ea;
@@ -16,6 +28,15 @@
 
 :root.dark {
   color-scheme: dark;
+  --page-bg: #0a0a0a;
+  --page-text: #e5e5e5;
+  --scrollbar: #404040;
+  --note-caret: #f5f5f5;
+  --note-selection: #1e3a5f;
+  --note-muted: #737373;
+  --note-quote: #a3a3a3;
+  --note-code-bg: #262626;
+  --note-link: #60a5fa;
   --graph-label: #e5e7eb;
   --graph-node: #9ca3af;
   --graph-node-pinned: #c084fc;
@@ -25,6 +46,14 @@
 body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--page-bg);
+  color: var(--page-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 #root {

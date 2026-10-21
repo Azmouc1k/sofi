@@ -34,7 +34,7 @@ export function NoteTitle({ title, onChange, onExit, ref }: NoteTitleProps) {
       }}
       placeholder="Untitled"
       aria-label="Note title"
-      className="w-full bg-transparent px-4 pb-2 pt-5 text-2xl font-semibold outline-none placeholder:text-neutral-400"
+      className="mb-4 w-full bg-transparent font-[family-name:var(--note-font)] text-[1.75rem] font-bold leading-tight outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
     />
   )
 }

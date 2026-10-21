@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Banner } from '../components/Banner'
 import { Dashboard } from '../features/dashboard/Dashboard'
 import { GraphView } from '../features/graph/GraphView'
 import { BacklinksPanel } from '../features/links/BacklinksPanel'
@@ -263,56 +264,55 @@ export default function App() {
           <GraphView onOpenNote={openNoteFromOverview} />
         </main>
       ) : (
-        <>
-          <main className="flex flex-1 flex-col overflow-hidden">
-            {error && (
-              <div className="flex items-center justify-between bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-900 dark:text-red-100">
-                <span>{error}</span>
-                <button type="button" className="underline" onClick={() => setError(null)}>
-                  Dismiss
-                </button>
-              </div>
-            )}
-            {notice && (
-              <div className="flex items-center justify-between bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-100">
-                <span>{notice}</span>
-                <button type="button" className="underline" onClick={() => setNotice(null)}>
-                  Dismiss
-                </button>
-              </div>
-            )}
-            {pendingLinkTitle && (
-              <div className="flex items-center justify-between bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-900">
-                <span>Note "{pendingLinkTitle}" doesn't exist yet.</span>
-                <span className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={confirmCreateFromLink}
-                    className="font-medium text-purple-600 dark:text-purple-400"
-                  >
-                    Create it
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingLinkTitle(null)}
-                    className="text-neutral-500"
-                  >
-                    Cancel
-                  </button>
-                </span>
-              </div>
-            )}
-            {activeNote && (
-              <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-1 text-xs text-neutral-400 dark:border-neutral-800">
-                <span>{activeNote.title}</span>
-                <span>
-                  {saveStatus === 'saving' && 'Saving…'}
-                  {saveStatus === 'saved' && 'Saved'}
-                </span>
-              </div>
-            )}
-            {activeNote ? (
-              <>
+        <main className="relative flex flex-1 flex-col overflow-hidden">
+          {(error || notice || pendingLinkTitle) && (
+            <div className="mx-auto flex w-full max-w-[70ch] flex-col gap-2 px-6 pt-4">
+              {error && (
+                <Banner tone="error" onDismiss={() => setError(null)}>
+                  {error}
+                </Banner>
+              )}
+              {notice && (
+                <Banner tone="info" onDismiss={() => setNotice(null)}>
+                  {notice}
+                </Banner>
+              )}
+              {pendingLinkTitle && (
+                <Banner
+                  tone="neutral"
+                  actions={
+                    <span className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={confirmCreateFromLink}
+                        className="font-medium text-purple-600 dark:text-purple-400"
+                      >
+                        Create it
+                      </button>
+                      <button type="button" onClick={() => setPendingLinkTitle(null)} className="text-neutral-500">
+                        Cancel
+                      </button>
+                    </span>
+                  }
+                >
+                  Note "{pendingLinkTitle}" doesn't exist yet.
+                </Banner>
+              )}
+            </div>
+          )}
+          {activeNote && (
+            // Absolutely positioned so the label appearing and disappearing
+            // never shifts the text while typing.
+            <span className="pointer-events-none absolute right-4 top-3 text-xs text-neutral-400">
+              {saveStatus === 'saving' && 'Saving…'}
+              {saveStatus === 'saved' && 'Saved'}
+            </span>
+          )}
+          {activeNote ? (
+            // One scroll area for title, body and backlinks, with the text in
+            // a centered column of readable width (~70 characters).
+            <div className="flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-[70ch] px-6 pb-24 pt-12">
                 <NoteTitle
                   key={`title:${editorKey}`}
                   ref={titleInputRef}
@@ -327,20 +327,18 @@ export default function App() {
                   onChange={(body) => handleChange((content) => replaceBody(content, body))}
                   onOpenLink={openNoteByTitle}
                   onExitTop={() => titleInputRef.current?.focus()}
+                  noteTitles={notes.map((note) => note.title)}
                 />
-              </>
-            ) : (
-              <div className="flex h-full items-center justify-center text-neutral-400">
-                Select or create a note to start writing.
+                <BacklinksPanel backlinks={backlinks} onOpenNote={openNote} />
               </div>
-            )}
-          </main>
-          {activeNote && (
-            <aside className="w-64 flex-shrink-0 border-l border-neutral-200 dark:border-neutral-800">
-              <BacklinksPanel backlinks={backlinks} onOpenNote={openNote} />
-            </aside>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 text-sm text-neutral-400">
+              <p>Select or create a note to start writing.</p>
+              <p className="text-xs">Ctrl+click a [[link]] to follow it.</p>
+            </div>
           )}
-        </>
+        </main>
       )}
     </div>
   )

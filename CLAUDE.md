@@ -156,6 +156,25 @@ vault/          sample notes for development (not user data)
   "# Heading" (`splitTitle.ts` splits/joins it), chosen over Obsidian's
   filename-only titles so existing notes need no migration and stay
   readable in other editors.
+- Notes view polish: CodeMirror uses `minimalSetup` (plus closeBrackets,
+  search, indentOnInput) instead of `basicSetup` — no line numbers or
+  gutters. Note text is monospace, in a centered ~70ch column; title,
+  body and backlinks scroll together, with backlinks below the note
+  ("Linked from") instead of a side column. Editor colors/font come from
+  `--note-*` variables in `index.css`. `@codemirror/autocomplete`,
+  `/search`, `/language` and `@lezer/highlight` are declared in
+  package.json because they're imported directly — they were already
+  installed as dependencies of `codemirror`.
+- Obsidian-style editing (`src/features/notes/editor/`): shortcuts
+  (Ctrl+B/I/K, Ctrl+Enter checkbox, Tab/Shift+Tab list indent, wrap
+  selection on typing * _ ` ~ =), `[[` autocomplete for note titles and
+  link types, and Live Preview — Markdown symbols hidden except on lines
+  being edited, bullets/checkboxes/rules rendered, links open on plain
+  click when rendered. The decisions are pure functions with tests
+  (`formatting.ts`, `linkQuery.ts`, `livePreviewModel.ts`); thin
+  CodeMirror wrappers apply them. Markdown is GFM with setext headings
+  disabled (a "-" under text no longer makes it a heading). Indent with
+  tabs, like Obsidian.
 - Link targets match note titles case-insensitively (`normalizeTitle`,
   shared by server and client). Done in JS, not SQL, because SQLite's
   lower()/NOCASE only fold ASCII.

@@ -28,7 +28,7 @@ export function NoteList({ notes, selectedId, onSelect, onCreate, onDelete }: No
 
   return (
     <div className="flex h-full flex-col border-r border-neutral-200 dark:border-neutral-800">
-      <div className="flex gap-2 p-2">
+      <div className="flex gap-2 p-3">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -38,46 +38,50 @@ export function NoteList({ notes, selectedId, onSelect, onCreate, onDelete }: No
               event.currentTarget.blur()
             }
           }}
-          placeholder="Search notes..."
-          className="flex-1 rounded border border-neutral-300 bg-transparent px-2 py-1 text-sm dark:border-neutral-700"
+          placeholder="Search notes…"
+          className="min-w-0 flex-1 rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-neutral-300 dark:bg-neutral-900 dark:focus:ring-neutral-700"
         />
         <button
           type="button"
           onClick={() => setCreatingTitle('')}
-          className="rounded bg-neutral-900 px-2 py-1 text-sm text-white dark:bg-neutral-100 dark:text-neutral-900"
+          title="New note"
+          className="rounded-md px-2 py-1.5 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
         >
-          New
+          + New
         </button>
       </div>
 
       {creatingTitle !== null && (
-        <div className="px-2 pb-2">
+        <div className="px-3 pb-2">
           <input
             autoFocus
             value={creatingTitle}
-            placeholder="Note title..."
+            placeholder="Note title…"
             onChange={(event) => setCreatingTitle(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') submitCreate()
               if (event.key === 'Escape') setCreatingTitle(null)
             }}
             onBlur={submitCreate}
-            className="w-full rounded border border-neutral-300 bg-transparent px-2 py-1 text-sm dark:border-neutral-700"
+            className="w-full rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-neutral-300 dark:bg-neutral-900 dark:focus:ring-neutral-700"
           />
         </div>
       )}
 
-      <ul className="flex-1 overflow-auto">
+      <ul className="flex flex-1 flex-col gap-px overflow-auto px-2 pb-3">
         {filtered.map((note) => (
-          <li key={note.id} className="group flex items-center">
+          <li
+            key={note.id}
+            className={`group flex items-center rounded-md ${
+              note.id === selectedId
+                ? 'bg-neutral-100 text-neutral-900 dark:bg-neutral-800/70 dark:text-neutral-100'
+                : 'text-neutral-600 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-900'
+            }`}
+          >
             <button
               type="button"
               onClick={() => onSelect(note.id)}
-              className={`block flex-1 truncate px-3 py-2 text-left text-sm ${
-                note.id === selectedId
-                  ? 'bg-neutral-200 dark:bg-neutral-800'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-900'
-              }`}
+              className="block min-w-0 flex-1 truncate px-2.5 py-1.5 text-left text-sm"
             >
               {note.title}
             </button>
@@ -115,11 +119,11 @@ export function NoteList({ notes, selectedId, onSelect, onCreate, onDelete }: No
           </li>
         ))}
         {filtered.length === 0 && notes.length > 0 && (
-          <li className="px-3 py-2 text-sm text-neutral-500">No notes found.</li>
+          <li className="px-2.5 py-1.5 text-sm text-neutral-400">No notes found.</li>
         )}
         {notes.length === 0 && (
-          <li className="px-3 py-2 text-sm text-neutral-500">
-            No notes yet — click "New" to create one.
+          <li className="px-2.5 py-1.5 text-sm text-neutral-400">
+            No notes yet — click "+ New" to create one.
           </li>
         )}
       </ul>

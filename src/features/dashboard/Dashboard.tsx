@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Banner } from '../../components/Banner'
 import * as storage from '../../storage/api'
 import type { DashboardData } from '../../types/dashboard'
 import type { GraphData } from '../../types/graph'
@@ -123,27 +124,6 @@ export function Dashboard({ onOpenNote, onCaptured, navigation }: DashboardProps
           <LinkTypeChart links={graph?.links ?? null} />
         </DashboardPanel>
       </aside>
-    </div>
-  )
-}
-
-interface BannerProps {
-  tone: 'error' | 'info'
-  onDismiss: () => void
-  children: ReactNode
-}
-
-function Banner({ tone, onDismiss, children }: BannerProps) {
-  const colors =
-    tone === 'error'
-      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
-      : 'bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-100'
-  return (
-    <div className={`pointer-events-auto flex w-full items-center justify-between gap-3 rounded px-3 py-2 text-sm shadow-sm ${colors}`}>
-      <span>{children}</span>
-      <button type="button" className="underline" onClick={onDismiss}>
-        Dismiss
-      </button>
     </div>
   )
 }
