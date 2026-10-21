@@ -71,6 +71,7 @@ export function Dashboard({ onOpenNote, onCaptured, navigation }: DashboardProps
           onGraphLoaded={setGraph}
           filtersClassName="bottom-3 left-1/2 max-w-[calc(100%-38rem)] -translate-x-1/2 flex-row flex-wrap justify-center"
           resetViewClassName="top-3 right-[19.5rem]"
+          settingsPanelClassName="top-full right-0 mt-2"
         />
       </div>
 

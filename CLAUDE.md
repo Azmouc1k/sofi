@@ -201,5 +201,13 @@ vault/          sample notes for development (not user data)
   system setting, and an explicit choice is saved in localStorage. The
   graph canvas reads its colors from CSS variables (`--graph-*` in
   `index.css`), since canvas can't use Tailwind classes.
+- Graph forces settings (gear button next to "Reset view"): gravity,
+  repel, link tightness, link distance, friction, idle drift — like
+  Obsidian's "Forces" panel. Stored in localStorage (`graphSettings.ts`,
+  same pattern as the theme) and shared by the Graph tab and dashboard.
+  Gravity uses per-node `forceX`/`forceY` alongside `forceCenter` (which
+  only re-centres the whole graph). Tightness multiplies d3's default
+  link strength instead of replacing it. Defaults match the previous
+  hardcoded values (gravity 0), so nothing changes until a slider moves.
 - Phase 4 is the explicit stop-here point in the phases list — the app
   should get used for about a week before starting Phase 5.

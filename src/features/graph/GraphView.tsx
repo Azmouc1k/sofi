@@ -4,6 +4,8 @@ import {
   forceLink,
   forceManyBody,
   forceSimulation,
+  forceX,
+  forceY,
   type Simulation,
   type SimulationLinkDatum,
   type SimulationNodeDatum,
@@ -15,6 +17,8 @@ import { extractPreview } from '../notes/notePreview'
 import * as storage from '../../storage/api'
 import type { GraphData } from '../../types/graph'
 import { GraphFilters } from './GraphFilters'
+import { GraphSettingsPanel } from './GraphSettingsPanel'
+import { getGraphSettings, useGraphSettings, type GraphSettings } from './graphSettings'
 
 interface SimNode extends SimulationNodeDatum {
   id: string
@@ -101,7 +105,6 @@ const HOLD_MS = 600
 const PULL_STRENGTH = 0.3
 const EASE = 0.12
 const DIM_ALPHA = 0.18
-const IDLE_ALPHA_TARGET = 0.015 // never fully settles — the "gentle drift" at idle
 const DRAG_ALPHA_TARGET = 0.3
 const DRAG_THRESHOLD = 5
 const MIN_ZOOM = 0.2
@@ -136,6 +139,9 @@ interface GraphViewProps {
   // classes) — the dashboard moves them out from under its side panels.
   filtersClassName?: string
   resetViewClassName?: string
+  // Where the forces panel opens relative to the reset/gear buttons —
+  // above them by default, below when the buttons sit at the top.
+  settingsPanelClassName?: string
 }
 
 export function GraphView({
@@ -144,6 +150,7 @@ export function GraphView({
   onGraphLoaded,
   filtersClassName,
   resetViewClassName = 'bottom-3 right-3',
+  settingsPanelClassName = 'bottom-full right-0 mb-2',
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -160,6 +167,8 @@ export function GraphView({
   const [legend, setLegend] = useState<LegendEntry[] | null>(null)
   const [knownTypes, setKnownTypes] = useState<string[]>(LINK_TYPES.map((t) => t.id))
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set())
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settings = useGraphSettings()
 
   // Everything below is imperative simulation/canvas state — it changes
   // every animation frame, far too often for React state.
@@ -240,15 +249,40 @@ export function GraphView({
     resizeCanvas(canvas, rect.width, rect.height)
 
     const simulation = forceSimulation(nodes)
-      .force('charge', forceManyBody().strength(-140))
       .force('center', forceCenter(rect.width / 2, rect.height / 2))
       .force('collide', forceCollide<SimNode>((d) => d.radius + 6))
-      .force('link', forceLink<SimNode, SimLink>(activeLinks(links)).id((d) => d.id).distance(90))
       .alphaDecay(0.02)
-      .alphaTarget(IDLE_ALPHA_TARGET)
       .on('tick', () => onTick())
+    applyForces(simulation, getGraphSettings())
 
     simRef.current = simulation
+  }
+
+  // Sets every user-tunable force from the settings. Safe to call on a
+  // running simulation: nodes keep their positions, d3 just recomputes.
+  function applyForces(simulation: Simulation<SimNode, SimLink>, s: GraphSettings) {
+    const { width, height } = sizeRef.current
+    simulation
+      .force('charge', forceManyBody().strength(-s.repel))
+      // forceCenter only shifts the whole graph to stay centered; these pull
+      // each node individually, so loose clusters can't wander off.
+      .force('gravityX', forceX<SimNode>(width / 2).strength(s.gravity))
+      .force('gravityY', forceY<SimNode>(height / 2).strength(s.gravity))
+      .force('link', buildLinkForce(s))
+      .velocityDecay(s.friction)
+    if (gestureRef.current.kind !== 'press' || !gestureRef.current.node) {
+      simulation.alphaTarget(s.idleDrift)
+    }
+  }
+
+  function buildLinkForce(s: GraphSettings) {
+    const linkForce = forceLink<SimNode, SimLink>(activeLinks(allLinksRef.current))
+      .id((d) => d.id)
+      .distance(s.linkDistance)
+    // d3's default strength weakens links on well-connected nodes; tightness
+    // scales it rather than replacing it, so 1 matches d3's own behavior.
+    const defaultStrength = linkForce.strength()
+    return linkForce.strength((link, i, links) => defaultStrength(link, i, links) * s.linkTightness)
   }
 
   function activeLinks(links: SimLink[]): SimLink[] {
@@ -269,15 +303,21 @@ export function GraphView({
   useEffect(() => {
     const simulation = simRef.current
     if (!simulation) return
-    const linkForce = forceLink<SimNode, SimLink>(activeLinks(allLinksRef.current))
-      .id((d) => d.id)
-      .distance(90)
-    simulation.force('link', linkForce)
+    simulation.force('link', buildLinkForce(getGraphSettings()))
     simulation.alpha(Math.max(simulation.alpha(), 0.3)).restart()
     // Links no longer touching the hovered node should stop being "active".
     recomputeConnected()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenTypes])
+
+  // Slider changes apply live, reheating just enough to show the new layout.
+  useEffect(() => {
+    const simulation = simRef.current
+    if (!simulation) return
+    applyForces(simulation, settings)
+    simulation.alpha(Math.max(simulation.alpha(), 0.3)).restart()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings])
 
   function recomputeConnected() {
     const hovered = hoveredRef.current
@@ -493,7 +533,7 @@ export function GraphView({
       node.fx = null
       node.fy = null
     }
-    simRef.current?.alphaTarget(IDLE_ALPHA_TARGET)
+    simRef.current?.alphaTarget(getGraphSettings().idleDrift)
   }
 
   function setCursor(cursor: string) {
@@ -689,6 +729,8 @@ export function GraphView({
       sizeRef.current = { width, height }
       resizeCanvas(canvas, width, height)
       simRef.current?.force('center', forceCenter(width / 2, height / 2))
+      simRef.current?.force('gravityX', forceX<SimNode>(width / 2).strength(getGraphSettings().gravity))
+      simRef.current?.force('gravityY', forceY<SimNode>(height / 2).strength(getGraphSettings().gravity))
       simRef.current?.alpha(0.1).restart()
     })
     observer.observe(container)
@@ -726,13 +768,29 @@ export function GraphView({
         onToggle={toggleType}
         className={filtersClassName}
       />
-      <button
-        type="button"
-        onClick={resetView}
-        className={`absolute ${resetViewClassName} rounded border border-neutral-200 bg-white/90 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-300 dark:hover:text-neutral-100`}
-      >
-        Reset view
-      </button>
+      <div className={`absolute ${resetViewClassName} flex gap-1`}>
+        <button
+          type="button"
+          onClick={resetView}
+          className="rounded border border-neutral-200 bg-white/90 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-300 dark:hover:text-neutral-100"
+        >
+          Reset view
+        </button>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((open) => !open)}
+          aria-label="Graph settings"
+          aria-expanded={settingsOpen}
+          title="Graph settings"
+          className={`rounded border border-neutral-200 bg-white/90 px-1.5 py-1 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:hover:text-neutral-100 ${settingsOpen ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-300'}`}
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+        {settingsOpen && <GraphSettingsPanel className={settingsPanelClassName} />}
+      </div>
       {hoverCard && (
         <div
           ref={cardRef}
